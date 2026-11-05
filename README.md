@@ -1,8 +1,8 @@
-# DG Command Center
+# DG Command Center 1.1.0
 
-One Windows dashboard for the DG Visual Toolkit and the source-based utilities from DGs Command Center. The polished Visual Toolkit interface is the single entry point: search and filter the tools, switch themes, pin favorites, review launch activity, and create shortcuts without opening a second dashboard.
+One refreshed Windows dashboard for the DG Visual Toolkit and the source-based utilities from DGs Command Center. The unified home screen brings search, quick filters, live tool counts, theme selection, favorites, launch activity, and shortcuts together.
 
-## Start
+## Run from source
 
 On Windows 10 or 11, install Python 3 with Tkinter and Windows PowerShell 5.1, then run:
 
@@ -11,6 +11,18 @@ py -3 main.py
 ```
 
 No Python packages need to be installed. Keep the `tools` and `assets` folders beside `main.py`; the launcher uses those paths to find the scripts and icons.
+
+## Build the Windows installer
+
+Install Python 3, PyInstaller (`py -3 -m pip install pyinstaller`), and Inno Setup 6, then run from the project folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build.ps1
+```
+
+The script generates the multi-size `assets\DG-Command-Center.ico`, packages the dashboard and source tools as a Windows app, and compiles the per-user installer. Find the setup executable under `dist\installer`. Installer settings are stored in `%LOCALAPPDATA%\DG Command Center`; the source-run configuration remains beside `main.py`.
+
+The visual refresh adds a welcome panel, live readiness/system/favorites counts, improved spacing, and an updated application identity. The release version is **1.1.0**.
 
 ## Included tools
 
@@ -29,7 +41,7 @@ Opening the dashboard does not run any tools. Tool cards launch the included ups
 - Power Plan downloads and activates a power profile. DGS WinUtil can launch an upstream script from the internet; verify its source and contents before use.
 - Some tools require an internet connection or additional Windows components. The launcher does not install dependencies automatically.
 
-Validation for this integration is limited to source parsing and file/catalog checks; no installers, binaries, or OS-tuning actions were run.
+Building the installer packages the source tools but does not run them. No installer or OS-tuning action runs until a user explicitly starts it.
 
 ## Attribution and licensing
 

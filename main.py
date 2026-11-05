@@ -1,6 +1,6 @@
 ﻿"""
 DG Command Center - Unified Windows utility hub
-Version: 1.0.0
+Version: 1.1.0
 Author: DG
 """
 
@@ -29,7 +29,7 @@ def enable_high_dpi():
 enable_high_dpi()
 
 APP_TITLE = "DG Command Center"
-FALLBACK_VERSION = "1.0.0"
+FALLBACK_VERSION = "1.1.0"
 
 CREATE_NO_WINDOW = 0x08000000
 CREATE_NEW_CONSOLE = 0x00000010
@@ -327,6 +327,13 @@ def base_dir():
     return Path(__file__).resolve().parent
 
 
+def resource_dir():
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        return Path(meipass)
+    return base_dir()
+
+
 class ConfigManager:
     DEFAULT_CONFIG = {
         "app_name": APP_TITLE,
@@ -349,7 +356,11 @@ class ConfigManager:
     }
 
     def __init__(self):
-        self.path = base_dir() / "config.json"
+        if getattr(sys, "frozen", False):
+            user_data = Path(os.environ.get("LOCALAPPDATA", Path.home()))
+            self.path = user_data / "DG Command Center" / "config.json"
+        else:
+            self.path = base_dir() / "config.json"
         self.data = self.load()
 
     def load(self):
@@ -362,10 +373,12 @@ class ConfigManager:
                         config.update(loaded)
             except Exception:
                 pass
+        config["version"] = FALLBACK_VERSION
         return config
 
     def save(self):
         try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
             with self.path.open("w", encoding="utf-8") as f:
                 json.dump(self.data, f, indent=2)
             return True
@@ -450,8 +463,8 @@ def shortcut_icon(tool, config):
         if searcher_icon.is_file():
             return searcher_icon
 
-    for candidate_dir in [folder, base_dir() / "assets", base_dir()]:
-        default_icon = candidate_dir / "DG-Visual-Toolkit.ico"
+    for candidate_dir in [resource_dir() / "assets", folder, base_dir()]:
+        default_icon = candidate_dir / "DG-Command-Center.ico"
         if default_icon.is_file():
             return default_icon
 
@@ -530,7 +543,7 @@ def make_shortcut(tool, config):
 
 
 def set_window_icon(root):
-    preferred = get_tools_dir(ConfigManager().data) / "DG-Visual-Toolkit.ico"
+    preferred = resource_dir() / "assets" / "DG-Command-Center.ico"
     candidates = [preferred]
     for folder in (base_dir(), base_dir() / "assets", base_dir() / "tools"):
         if folder.is_dir():
@@ -1256,8 +1269,8 @@ class SuiteApp:
 
         # Root setup
         root.title(f"{self.title} v{self.version}")
-        root.geometry("940x840")
-        root.minsize(860, 720)
+        root.geometry("1120x900")
+        root.minsize(980, 760)
         root.configure(bg=self.theme["bg"])
         set_window_icon(root)
 
@@ -1274,6 +1287,7 @@ class SuiteApp:
 
         # Build UI Structure
         self.build_header()
+        self.build_overview()
         self.build_filter_bar()
         self.build_tools_scroll_area()
         self.build_activity_log()
@@ -1283,7 +1297,7 @@ class SuiteApp:
         self.refresh()
 
     def load_logo(self):
-        logo_path = base_dir() / "assets" / "DG-Visual-Toolkit-1024.png"
+        logo_path = resource_dir() / "assets" / "DG-Visual-Toolkit-1024.png"
         if logo_path.is_file():
             try:
                 full_img = tk.PhotoImage(file=str(logo_path))
@@ -1302,6 +1316,17 @@ class SuiteApp:
         self.title_lbl.configure(bg=t["header_bg"], fg=t["accent"])
         self.subtitle_lbl.configure(bg=t["header_bg"], fg=t["text_muted"])
         self.badge_lbl.configure(bg=t["panel_line"], fg=t["text"])
+
+        self.overview_frame.configure(bg=t["bg"])
+        self.hero_panel.configure(bg=t["panel"], highlightbackground=t["panel_line"])
+        self.hero_kicker.configure(bg=t["panel"], fg=t["accent"])
+        self.hero_title.configure(bg=t["panel"], fg=t["text"])
+        self.hero_description.configure(bg=t["panel"], fg=t["text_muted"])
+        self.metric_values.configure(bg=t["bg"])
+        for card, label, value in self.metric_cards:
+            card.configure(bg=t["card_bg"], highlightbackground=t["panel_line"])
+            label.configure(bg=t["card_bg"], fg=t["text_muted"])
+            value.configure(bg=t["card_bg"], fg=t["text"])
 
         self.filter_bar_frame.configure(bg=t["bg"])
         self.search_box.configure(bg=t["panel"], highlightbackground=t["panel_line"])
@@ -1323,6 +1348,7 @@ class SuiteApp:
         self.theme_indicator_lbl.configure(bg=t["panel"], fg=t["accent"], highlightbackground=t["panel_line"])
 
         self.render_filter_pills()
+        self.update_overview()
         self.render_tools()
 
     def build_header(self):
@@ -1366,7 +1392,7 @@ class SuiteApp:
 
         self.subtitle_lbl = tk.Label(
             title_box,
-            text="Visual Suite · Icon Recolor · Desktop Automation · Shortcut Architect",
+            text="One focused home for your everyday Windows utilities",
             bg=t["header_bg"],
             fg=t["text_muted"],
             font=(FONT_FAMILY, 8),
@@ -1428,6 +1454,99 @@ class SuiteApp:
         )
         self.folder_btn.pack(side="left", padx=4)
 
+    def build_overview(self):
+        t = self.theme
+        self.overview_frame = tk.Frame(self.root, bg=t["bg"], padx=20, pady=8)
+        self.overview_frame.pack(fill="x")
+
+        self.hero_panel = tk.Frame(
+            self.overview_frame,
+            bg=t["panel"],
+            highlightthickness=1,
+            highlightbackground=t["panel_line"],
+            padx=20,
+            pady=16,
+        )
+        self.hero_panel.pack(fill="x")
+
+        self.hero_kicker = tk.Label(
+            self.hero_panel,
+            text="YOUR WINDOWS TOOLKIT",
+            bg=t["panel"],
+            fg=t["accent"],
+            font=(FONT_FAMILY, 8, "bold"),
+            anchor="w",
+        )
+        self.hero_kicker.pack(anchor="w")
+        self.hero_title = tk.Label(
+            self.hero_panel,
+            text="Everything you need. One command center.",
+            bg=t["panel"],
+            fg=t["text"],
+            font=(FONT_FAMILY, 19, "bold"),
+            anchor="w",
+        )
+        self.hero_title.pack(anchor="w", pady=(3, 1))
+        self.hero_description = tk.Label(
+            self.hero_panel,
+            text="Find a tool, pick up where you left off, and keep system-level actions clearly in view.",
+            bg=t["panel"],
+            fg=t["text_muted"],
+            font=(FONT_FAMILY, 9),
+            anchor="w",
+        )
+        self.hero_description.pack(anchor="w")
+
+        self.metric_values = tk.Frame(self.overview_frame, bg=t["bg"])
+        self.metric_values.pack(fill="x", pady=(8, 0))
+        self.metric_cards = []
+        for title in ("READY TO USE", "SYSTEM TOOLS", "FAVORITES"):
+            card = tk.Frame(
+                self.metric_values,
+                bg=t["card_bg"],
+                highlightthickness=1,
+                highlightbackground=t["panel_line"],
+                padx=14,
+                pady=9,
+            )
+            card.pack(side="left", fill="x", expand=True, padx=(0, 8))
+            label = tk.Label(
+                card,
+                text=title,
+                bg=t["card_bg"],
+                fg=t["text_muted"],
+                font=(FONT_FAMILY, 7, "bold"),
+                anchor="w",
+            )
+            label.pack(anchor="w")
+            value = tk.Label(
+                card,
+                text="0",
+                bg=t["card_bg"],
+                fg=t["text"],
+                font=(FONT_FAMILY, 16, "bold"),
+                anchor="w",
+            )
+            value.pack(anchor="w", pady=(2, 0))
+            self.metric_cards.append((card, label, value))
+        self.metric_cards[-1][0].pack_configure(padx=(0, 0))
+
+    def update_overview(self):
+        if not hasattr(self, "metric_cards"):
+            return
+        folder = get_tools_dir(self.config_mgr.data)
+        ready = 0
+        system = 0
+        favorites = 0
+        for tool in self.tools:
+            custom_path = Path(tool.filename)
+            path = custom_path if tool.is_custom and custom_path.is_file() else folder / tool.filename
+            ready += path.is_file()
+            system += tool.admin
+            favorites += self.config_mgr.is_favorite(tool.name)
+        for (_, _, value), count in zip(self.metric_cards, (ready, system, favorites)):
+            value.configure(text=str(count))
+
     def build_filter_bar(self):
         t = self.theme
         self.filter_bar_frame = tk.Frame(self.root, bg=t["bg"], padx=20, pady=6)
@@ -1447,10 +1566,10 @@ class SuiteApp:
 
         self.search_icon_lbl = tk.Label(
             self.search_box,
-            text=" 🔍 ",
+            text="⌕",
             bg=t["panel"],
             fg=t["text_muted"],
-            font=(FONT_FAMILY, 9),
+            font=(FONT_FAMILY, 17),
         )
         self.search_icon_lbl.pack(side="left", padx=(6, 2))
 
@@ -1468,7 +1587,7 @@ class SuiteApp:
 
         self.search_clear_btn = tk.Button(
             self.search_box,
-            text="✖",
+            text="×",
             command=self.clear_search,
             bg=t["panel"],
             fg=t["text_muted"],
@@ -1477,7 +1596,7 @@ class SuiteApp:
             font=(FONT_FAMILY, 8),
             relief="flat",
             bd=0,
-            padx=8,
+            padx=10,
             cursor="hand2",
         )
         self.search_clear_btn.pack(side="right")
@@ -1485,7 +1604,7 @@ class SuiteApp:
         # Stats label
         self.stats_lbl = tk.Label(
             search_wrap,
-            text="Showing 0 of 0 tools",
+            text="0 tools",
             bg=t["bg"],
             fg=t["text_muted"],
             font=(FONT_FAMILY, 8),
@@ -1804,7 +1923,8 @@ class SuiteApp:
         folder = get_tools_dir(self.config_mgr.data)
         filtered = self.get_filtered_tools()
 
-        self.stats_lbl.configure(text=f"Showing {len(filtered)} of {len(self.tools)} tools")
+        self.stats_lbl.configure(text=f"{len(filtered)} tools")
+        self.update_overview()
 
         if not filtered:
             empty_box = tk.Frame(self.scroll_content, bg=t["card_bg"], padx=20, pady=30, highlightthickness=1, highlightbackground=t["panel_line"])
