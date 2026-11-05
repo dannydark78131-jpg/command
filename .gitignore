@@ -1,0 +1,18 @@
+# Python runtime and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local settings and logs
+/config.json
+*.log
+tools/**/Debloat-Log.txt
+
+# Generated packaging/build output and downloaded installers
+/build/
+/dist/
+*.spec
+*.exe
+*.msi
+*.zip
